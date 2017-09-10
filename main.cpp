@@ -1,13 +1,36 @@
+#include <stdlib.h>     /* getenv */
+#include <unistd.h> /* sleep */
+#include <sstream>
+
 #include "bittrexApi.hpp"
 #include "optMarket.hpp"
 
 using namespace std;
 
-string apikey = "";
-string apisecret = "";
+string apikey, apisecret;
 
+void readKeys(string& apikey, string& apisecret)
+{
+	//TODO
+	//[17:15, 3/7/2017] Igor Machado: Mais simples, no terminal:  $ export CHAVE="1234"
+	//[17:16, 3/7/2017] Igor Machado: No código: char* val=getenv("CHAVE") ;
+
+	string str;
+	ifstream t("keys.input");
+	getline(t, str);
+	getline(t, apikey);
+	getline(t, str);
+	getline(t, apisecret);
+
+//	cout << apikey << endl;
+//	cout << apisecret << endl;
+//	getchar();
+}
 int main(void)
 {
+	//Reading apikey and secret located at keys.input
+	readKeys(apikey, apisecret);
+
 	// Bittrex main class
 	BittrexAPI bittrex;
 
@@ -17,34 +40,42 @@ int main(void)
 	cout << std::setprecision(10);
 	cout << std::fixed;
 
-	float quantity = 0.3000;
-	float rate = 0.00313001;
-//	optMarket.optSellCalculatingProfit(bittrex,quantity,rate,"BTC-ANS");
+	double quantity = 0.01;
+	double rate = 0.00313001;
+	optMarket.optSellCalculatingProfit(bittrex,quantity,rate,"BTC-NEO");
+//	optMarket.callBookOffers_ToTimeSeries_PlusAutomaticActions(bittrex, "BTC-NEO", 60);
+//
+	optMarket.optGetBalanceBittrex(bittrex,"NEO");
 
-	bittrex.setGetOrdersBook("BTC-ANS", 1);
-	bittrex.setGetMarketSummary("BTC-ANS");
-	bittrex.setGetBalance("ANS");
+	optMarket.optGetBalanceBittrex(bittrex,"NEO");
+
+	bittrex.setGetOrdersBook("BTC-NEO", 1);
+	bittrex.setGetMarketSummary("BTC-NEO");
+	bittrex.setGetBalance("NEO");
 	bittrex.setCancelOrder("uuid");
-	bittrex.setSellLimit("BTC-ANS", quantity, rate);
-	bittrex.setBuyLimit("BTC-ANS", quantity, rate); //Min 50K * 10^-8
-	bittrex.setVerifyMyOpenOrders("BTC-ANS");
-	bittrex.setGetOrdersBook("BTC-ANS", 1);
+	bittrex.setSellLimit("BTC-NEO", quantity, rate);
+	bittrex.setBuyLimit("BTC-NEO", quantity, rate); //Min 50K * 10^-8
+	bittrex.setVerifyMyOpenOrders("BTC-NEO");
+	bittrex.setGetOrdersBook("BTC-NEO", 1);
 	bittrex.setGetBalance("ANS");
+	bittrex.setGetOrdersBook("BTC-NEO", 1);
+	bittrex.setGetBalance("NEO");
+	bittrex.setGetOrdersBook("BTC-ETH", 1);
+	bittrex.setGetMarketSummary("BTC-NEO");
+
+	bittrex.setGetBalance("BTC");
 
 	bool print = true;
 	bool sign = true;
 	bool exportReply = false;
 
-	InstOptions instOpt(print, sign, exportReply);
+	InstuctionOptions instOpt(print, sign, exportReply);
 	//Executing instruction
 	string buffer = bittrex.callCurlPlataform(instOpt);
 
-	//Example for putting all orders into vectors, quantities and rates
+//	//Example for putting all orders into vectors, quantities and rates
 //	vector<vector<double> > orderBookVectors = optMarket.transformBookToVectors(buffer);
-//
-//	cout << "\nFinal answer in terms of vectors:" << endl;
-//	cout << orderBookVectors << endl;
 
-	cout << "Finished with success!" << endl;
+	cout << "Finished with success!!" << endl;
 	return 0;
 }
