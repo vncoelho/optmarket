@@ -13,6 +13,7 @@
 #include <numeric>
 #include <algorithm>
 #include <iterator>
+#include <assert.h>
 
 #include "bittrexApi.hpp"
 #include "OptFrame/Timer.hpp"
@@ -346,8 +347,21 @@ public:
 	{
 	}
 
+	bool checkFail(string buffer){
+		cout<<buffer<<endl;
+		size_t pos= buffer.find("false");
+		cout<<pos<<endl;
+		getchar();
+		string fail = buffer.substr(buffer.find("false"));
+		cout<<fail<<endl;
+		cout<<buffer<<endl;
+		getchar();
+		return true;
+	}
+
 	currencyBalance getMarketBalanceFromAPI(string buffer, string market)
 	{
+		assert(checkFail(buffer));
 //		cout << market << endl;
 //		cout << buffer.find(market) << endl;
 //		getchar();
@@ -373,7 +387,7 @@ public:
 		currencyBalance cBT = getMarketBalanceFromAPI(buffer, market);
 
 		cout << cBT << endl;
-
+		getchar();
 	}
 
 	void optSellCalculatingProfit(BittrexAPI& bittrex, double quantity, double rate, string market)
@@ -501,7 +515,7 @@ public:
 			Timer tnow;
 			vector<ordersMetrics> vMetrics = callBookOfOffers_UpdateVectors_ReturnMetrics(bittrex, market, depth);
 
-			cout << "average values (bQ,bR,sQ,sR):\t";
+			cout << "AVG/SD (bQ,bR,sQ,sR):\t";
 			for (int i = 0; i < (int) vMetrics.size(); i++)
 				cout << vMetrics[i].avg << "/" << vMetrics[i].stdev << "\t";
 			cout << endl;

@@ -16,8 +16,8 @@
 
 using namespace std;
 
-extern string apikey;
-extern string apisecret;
+extern string API_PUBLIC_KEY;
+extern string API_PRIVATE_KEY;
 
 //Options for signing message with your private key and/or exporting json to file or string
 struct InstuctionOptions
@@ -127,7 +127,7 @@ public:
 		/* signing instruction */
 		if (instOpt.signMessage == true)
 		{
-			string signature = getHMAC2(apisecret, ssURL.str());
+			string signature = getHMAC2(API_PRIVATE_KEY, ssURL.str());
 			cout << "\n----------------------------------------------" << endl;
 			cout << "HMAC signature (header purpose): \n" << signature << endl;
 			cout << "----------------------------------------------" << endl;
@@ -220,30 +220,30 @@ public:
 	void setBuyLimit(string market, double quantity, double rate)
 	{
 		ssURL.str("");
-		ssURL << "https://bittrex.com/api/v1.1/market/buylimit?apikey=" << apikey << "&nonce=" << getNonce() << "&market=" << market << "&quantity=" << quantity << "&rate=" << rate;
+		ssURL << "https://bittrex.com/api/v1.1/market/buylimit?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce() << "&market=" << market << "&quantity=" << quantity << "&rate=" << rate;
 
 	}
 
 	void setSellLimit(string market, double quantity, double rate)
 	{
 		ssURL.str("");
-		ssURL << "https://bittrex.com/api/v1.1/market/selllimit?apikey=" << apikey << "&nonce=" << getNonce() << "&market=" << market << "&quantity=" << quantity << "&rate=" << rate;
+		ssURL << "https://bittrex.com/api/v1.1/market/selllimit?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce() << "&market=" << market << "&quantity=" << quantity << "&rate=" << rate;
 
 	}
 
 	void setCancelOrder(string uuid)
 	{
 		ssURL.str("");
-		ssURL << "https://bittrex.com/api/v1.1/market/cancel?apikey=" << apikey << "&nonce=" << getNonce() << "&uuid=" << uuid;
+		ssURL << "https://bittrex.com/api/v1.1/market/cancel?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce() << "&uuid=" << uuid;
 	}
 
 	void setVerifyMyOpenOrders(string market = "empty")
 	{
 		ssURL.str("");
 		if (market != "empty")
-			ssURL << "https://bittrex.com/api/v1.1/market/getopenorders?apikey=" << apikey << "&nonce=" << getNonce() << "&market=" << market;
+			ssURL << "https://bittrex.com/api/v1.1/market/getopenorders?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce() << "&market=" << market;
 		else
-			ssURL << "https://bittrex.com/api/v1.1/market/getopenorders?apikey=" << apikey << "&nonce=" << getNonce();
+			ssURL << "https://bittrex.com/api/v1.1/market/getopenorders?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce();
 	}
 
 	// ===========================================================
@@ -257,9 +257,9 @@ public:
 	{
 		ssURL.str("");
 		if (currency != "empty")
-			ssURL << "https://bittrex.com/api/v1.1/account/getbalances?apikey=" << apikey << "&nonce=" << getNonce() << "&currency=" << currency;
+			ssURL << "https://bittrex.com/api/v1.1/account/getbalances?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce() << "&currency=" << currency;
 		else
-			ssURL << "https://bittrex.com/api/v1.1/account/getbalances?apikey=" << apikey << "&nonce=" << getNonce();
+			ssURL << "https://bittrex.com/api/v1.1/account/getbalances?apikey=" << API_PUBLIC_KEY << "&nonce=" << getNonce();
 	}
 
 	//TODO
