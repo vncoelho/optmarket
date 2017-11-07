@@ -34,7 +34,7 @@ struct currencyBalance
 
 ostream& operator<<(ostream &os, const currencyBalance& obj)
 {
-	os << "balance:" << obj.balance << "\tavailable:" << obj.available << "\tpending:" << obj.pending << endl;
+	os << "balance=" << obj.balance << "\tavailable=" << obj.available << "\tpending=" << obj.pending << endl;
 	return os;
 }
 
@@ -258,20 +258,8 @@ public:
 		});
 	}
 
-	vector<ordersBookBasicInfo> calculate_AVG_STD(const vector<vector<double> >& orderBookVectors)
-	{
-		double percentage = 0.25;
-		int nOrders = 10;
-
-		return calculateOrdersBookMetrics(orderBookVectors, percentage, nOrders);
-		//		cout << "average values are:\t";
-		//		for (int i = 0; i < (int) vMetrics.size(); i++)
-		//			cout << vMetrics[i].avg << "/" << vMetrics[i].stdev << "\t";
-		//		cout << endl;
-	}
-
 	//double percentage is only used when fixed nOrder is not given
-	vector<ordersBookBasicInfo> calculateOrdersBookMetrics(const vector<vector<double> > orderBookVectors, const double percentage, const int nOrders = -1)
+	vector<ordersBookBasicInfo> calculateOrdersBook_Basic_Info(const vector<vector<double> > orderBookVectors, const double percentage, const int nOrders = -1)
 	{
 		vector<KahanAccumulation> vSum(4);
 		int nBuying = orderBookVectors[BOOK_BUY_ORDERS_Q].size();
@@ -327,9 +315,11 @@ public:
 		subtractVectorsSameSize(MACDLine, signalLine, MACDHistogram);
 
 		cout << "============================" << endl;
-		cout << "MACD Histogram" << endl;
-		cout << MACDHistogram << endl;
-		cout << "============================" << endl;
+		int sizeMACD = MACDHistogram.size();
+		cout << "printing reverse MACD Histogram for TS 0 -- size: " << sizeMACD << endl;
+		for (int i = (sizeMACD - 1); i >= 0; i--)
+			cout << MACDHistogram[i] << ",";
+		cout << "\n============================" << endl;
 //		getchar();
 	}
 //		TA_RetCode retCode;
@@ -410,7 +400,7 @@ public:
 		size_t posFalse = buffer.find("false");
 		size_t posBad = buffer.find("Bad");
 		size_t posError = buffer.find("Error");
-		if ( (posFalse < buffer.size()) || (posBad < buffer.size()) || (posError < buffer.size())  )
+		if ((posFalse < buffer.size()) || (posBad < buffer.size()) || (posError < buffer.size()))
 			return false;
 
 		return true;
@@ -441,7 +431,7 @@ public:
 		string buffer = bittrex.callCurlPlataform(InstuctionOptions(print = false, sign = true, exportReply = false));
 		currencyBalance cBT = filterBittrexBalanceForSpecificMarket(buffer, market);
 
-		cout << "optMarket::" <<cBT << endl;
+		cout << "optMarket::" << cBT << endl;
 		getchar();
 	}
 
@@ -504,7 +494,7 @@ public:
 	{
 		int secondsPerUpdate = -5; // if lower than 0, no sleep
 
-		//frequencies and maxSamples determines the TS that will be kept
+		//frequencies (seconds) and maxSamples determines the TS that will be kept
 		vector<int> frequencies =
 		{ 1, 5, 10, 60 };
 		vector<int> maxSamples =
@@ -520,9 +510,11 @@ public:
 			Timer tnow;
 			vector<vector<double> > vBookOfOrders = callBookOfOffers_UpdateVectors(bittrex, market, depth);
 
-			vector<ordersBookBasicInfo> vAvgStd = oBTS.calculate_AVG_STD(vBookOfOrders);
+			double percentage = 0.25;
+			int nOrders = 10;
+			vector<ordersBookBasicInfo> vAvgStd = oBTS.calculateOrdersBook_Basic_Info(vBookOfOrders, percentage, nOrders);
 
-			cout << "optMarket::AVG/SD (bQ,bR,sQ,sR):\t";
+			cout << "optMarket:: |AVG/SD| -- |depth,depth*%,nOrders|: " << depth << "/" << depth * percentage << "/" << nOrders << " |buyQ,buyR,sellQ,sellR|\n";
 			for (int i = 0; i < (int) vAvgStd.size(); i++)
 				cout << vAvgStd[i].avg << "/" << vAvgStd[i].stdev << "\t";
 			cout << endl;

@@ -22,9 +22,9 @@ void readKeys(string& apikey, string& apisecret)
 	getline(t, str);
 	getline(t, apisecret);
 
-	cout << apikey << endl;
-	cout << apisecret << endl;
-	getchar();
+//	cout << apikey << endl;
+//	cout << apisecret << endl;
+//	getchar();
 }
 
 int main(void)
