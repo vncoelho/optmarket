@@ -22,10 +22,11 @@ void readKeys(string& apikey, string& apisecret)
 	getline(t, str);
 	getline(t, apisecret);
 
-//	cout << apikey << endl;
-//	cout << apisecret << endl;
-//	getchar();
+	cout << apikey << endl;
+	cout << apisecret << endl;
+	getchar();
 }
+
 int main(void)
 {
 	//Reading apikey and secret located at keys.input
@@ -47,28 +48,24 @@ int main(void)
 
 //	bittrex.setSellLimit("BTC-TRIG", quantity, rate);
 //	bittrex.setCancelOrder("aa408c07-3d7f-4696-8102-f8fb9b5ed2be");
-	bool print = true;
-	bool sign = true;
-	bool exportReply = false;
+	bool print, sign, exportReply;
 
-
-	optMarket.optGetBalanceBittrex(bittrex,"TRIG");
+	optMarket.optGetBalanceBittrex(bittrex, "TRIG");
 
 //	getchar();
 
-	instOpt =  InstuctionOptions(print, sign, exportReply);
+	instOpt = InstuctionOptions(print = false, sign = true, exportReply = false);
 	output_buffer = bittrex.callCurlPlataform(instOpt);
 
 //	optMarket.optSellCalculatingProfit(bittrex,quantity,rate,"BTC-NEO");
-//optMarket.callBookOffers_ToTimeSeries_PlusAutomaticActions(bittrex, "USDT-BTC", 50);
+	optMarket.callBookOffers_ToTimeSeries_PlusAutomaticActions(bittrex, "USDT-BTC", 50);
 
-cout<<"Parou!"<<endl;
-getchar();
+	cout << "main.cpp::Waiting!" << endl;
+	getchar();
 //
-	optMarket.optGetBalanceBittrex(bittrex,"NEO");
+	optMarket.optGetBalanceBittrex(bittrex, "NEO");
 
-	optMarket.optGetBalanceBittrex(bittrex,"NEO");
-
+	optMarket.optGetBalanceBittrex(bittrex, "NEO");
 
 	bittrex.setGetOrdersBook("BTC-NEO", 1);
 	bittrex.setGetMarketSummary("BTC-NEO");
@@ -86,10 +83,9 @@ getchar();
 
 	bittrex.setGetBalance("BTC");
 
-	instOpt =  InstuctionOptions(print, sign, exportReply);
+	instOpt = InstuctionOptions(print = true, sign = true, exportReply = false);
 	//Executing instruction
-output_buffer = bittrex.callCurlPlataform(instOpt);
-
+	output_buffer = bittrex.callCurlPlataform(instOpt);
 
 //	InstuctionOptions instOpt(print, sign, exportReply);
 	//Executing instruction

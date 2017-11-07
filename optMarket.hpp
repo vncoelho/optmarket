@@ -34,7 +34,7 @@ struct currencyBalance
 
 ostream& operator<<(ostream &os, const currencyBalance& obj)
 {
-	os << "balance:" <<  obj.balance << "\tavailable:" << obj.available << "\tpending:" << obj.pending << endl;
+	os << "balance:" << obj.balance << "\tavailable:" << obj.available << "\tpending:" << obj.pending << endl;
 	return os;
 }
 
@@ -59,12 +59,12 @@ ostream& operator<<(ostream &os, const vector<T> &obj)
 	return os;
 }
 
-struct ordersMetrics
+struct ordersBookBasicInfo
 {
 	double avg;
 	double stdev;
 
-	ordersMetrics()
+	ordersBookBasicInfo()
 	{
 		avg = 0;
 		stdev = 0;
@@ -80,7 +80,7 @@ struct tsMetrics
 
 struct myMarketTimeSeries
 {
-	vector<vector<ordersMetrics> > mTS; //vector of book metrics for with desired frequency
+	vector<vector<ordersBookBasicInfo> > mTS; //vector of book metrics for with desired frequency
 	int frequency;
 	int maxTS;
 
@@ -158,7 +158,7 @@ public:
 		return vTS[ts].maxTS;
 	}
 
-	void setTSNewObservation(int ts, vector<ordersMetrics> vOM)
+	void setTSNewObservation(int ts, vector<ordersBookBasicInfo> vOM)
 	{
 		vTS[ts].mTS.push_back(vOM);
 	}
@@ -193,7 +193,7 @@ public:
 //		return vAvgOM;
 //	}
 
-	void updateTS(const vector<ordersMetrics>& vOM, const long int iter)
+	void updateTSBasicInfo(const vector<ordersBookBasicInfo>& vOM, const long int iter)
 	{
 		int nTS = getNTS();
 
@@ -221,7 +221,7 @@ public:
 //		return ts;
 //	}
 
-	vector<double> convertVectorOfOrderMetricsToSumOrStdTS(const vector<vector<ordersMetrics> > tsOM)
+	vector<double> convertVectorOfOrderMetricsToSumOrStdTS(const vector<vector<ordersBookBasicInfo> > tsOM)
 	{
 		int nSamples = tsOM.size();
 		vector<double> ts(nSamples);
@@ -257,6 +257,63 @@ public:
 			return std::abs(l - r);
 		});
 	}
+
+	vector<ordersBookBasicInfo> calculate_AVG_STD(const vector<vector<double> >& orderBookVectors)
+	{
+		double percentage = 0.25;
+		int nOrders = 10;
+
+		return calculateOrdersBookMetrics(orderBookVectors, percentage, nOrders);
+		//		cout << "average values are:\t";
+		//		for (int i = 0; i < (int) vMetrics.size(); i++)
+		//			cout << vMetrics[i].avg << "/" << vMetrics[i].stdev << "\t";
+		//		cout << endl;
+	}
+
+	//double percentage is only used when fixed nOrder is not given
+	vector<ordersBookBasicInfo> calculateOrdersBookMetrics(const vector<vector<double> > orderBookVectors, const double percentage, const int nOrders = -1)
+	{
+		vector<KahanAccumulation> vSum(4);
+		int nBuying = orderBookVectors[BOOK_BUY_ORDERS_Q].size();
+		int nSelling = orderBookVectors[BOOK_SELL_ORDERS_Q].size();
+
+		int nBuyOrdersToAvg = nOrders, nSellOrdersToAvg = nOrders;
+		if (nOrders == -1)
+		{
+			nBuyOrdersToAvg = nBuying * percentage;
+			nSellOrdersToAvg = nBuying * percentage;
+		}
+
+		KahanAccumulation init =
+		{ 0 };
+		vSum[BOOK_BUY_ORDERS_Q] = accumulate(orderBookVectors[BOOK_BUY_ORDERS_Q].begin(), orderBookVectors[BOOK_BUY_ORDERS_Q].begin() + nBuyOrdersToAvg, init, KahanSum);
+		vSum[BOOK_BUY_ORDERS_R] = std::accumulate(orderBookVectors[BOOK_BUY_ORDERS_R].begin(), orderBookVectors[BOOK_BUY_ORDERS_R].begin() + nBuyOrdersToAvg, init, KahanSum);
+		vSum[BOOK_SELL_ORDERS_Q] = accumulate(orderBookVectors[BOOK_SELL_ORDERS_Q].begin(), orderBookVectors[BOOK_SELL_ORDERS_Q].begin() + nSellOrdersToAvg, init, KahanSum);
+		vSum[BOOK_SELL_ORDERS_R] = accumulate(orderBookVectors[BOOK_SELL_ORDERS_R].begin(), orderBookVectors[BOOK_SELL_ORDERS_R].begin() + nSellOrdersToAvg, init, KahanSum);
+
+		vector<ordersBookBasicInfo> vMetrics(4);
+
+		vMetrics[BOOK_BUY_ORDERS_Q].avg = vSum[BOOK_BUY_ORDERS_Q].sum / nBuyOrdersToAvg;
+		vMetrics[BOOK_BUY_ORDERS_R].avg = vSum[BOOK_BUY_ORDERS_R].sum / nBuyOrdersToAvg;
+		vMetrics[BOOK_SELL_ORDERS_Q].avg = vSum[BOOK_SELL_ORDERS_Q].sum / nSellOrdersToAvg;
+		vMetrics[BOOK_SELL_ORDERS_R].avg = vSum[BOOK_SELL_ORDERS_R].sum / nSellOrdersToAvg;
+
+		for (int i = 0; i < (int) vMetrics.size(); i++)
+		{
+			vMetrics[i].stdev = 0.0;
+			double m = vMetrics[i].avg;
+
+			for_each(orderBookVectors[i].begin(), orderBookVectors[i].begin() + nBuyOrdersToAvg, [&](const double d)
+			{
+				vMetrics[i].stdev += (d - m) * (d - m);
+			});
+
+			vMetrics[i].stdev = sqrt(vMetrics[i].stdev / (orderBookVectors[i].size() - 1));
+		}
+
+		return vMetrics;
+	}
+
 	void callMetrics()
 	{
 		vector<double> values = convertVectorOfOrderMetricsToSumOrStdTS(vTS[0].mTS);
@@ -347,19 +404,19 @@ public:
 	{
 	}
 
-	bool checkFail(string buffer){
-		cout<<buffer<<endl;
-		size_t pos= buffer.find("false");
-		cout<<pos<<endl;
-		getchar();
-		string fail = buffer.substr(buffer.find("false"));
-		cout<<fail<<endl;
-		cout<<buffer<<endl;
-		getchar();
+	bool checkFail(string buffer)
+	{
+		cout << buffer << endl;
+		size_t posFalse = buffer.find("false");
+		size_t posBad = buffer.find("Bad");
+		size_t posError = buffer.find("Error");
+		if ( (posFalse < buffer.size()) || (posBad < buffer.size()) || (posError < buffer.size())  )
+			return false;
+
 		return true;
 	}
 
-	currencyBalance getMarketBalanceFromAPI(string buffer, string market)
+	currencyBalance filterBittrexBalanceForSpecificMarket(string buffer, string market)
 	{
 		assert(checkFail(buffer));
 //		cout << market << endl;
@@ -376,17 +433,15 @@ public:
 		return cB;
 	}
 
-	void optGetBalanceBittrex(BittrexAPI& bittrex, string market)
+	void optGetBalanceBittrex(BittrexAPI& bittrex, const string market)
 	{
-		bool print = false;
-		bool sign = true; //If you want to sign
-		bool exportReply = false;
+		bool print, sign, exportReply;
 
 		bittrex.setGetBalance(market);
-		string buffer = bittrex.callCurlPlataform(InstuctionOptions(print, sign, exportReply));
-		currencyBalance cBT = getMarketBalanceFromAPI(buffer, market);
+		string buffer = bittrex.callCurlPlataform(InstuctionOptions(print = false, sign = true, exportReply = false));
+		currencyBalance cBT = filterBittrexBalanceForSpecificMarket(buffer, market);
 
-		cout << cBT << endl;
+		cout << "optMarket::" <<cBT << endl;
 		getchar();
 	}
 
@@ -396,7 +451,7 @@ public:
 		double costs = theoricalTotal * (bittrex.getFeesPerOrder());
 		double realTotal = theoricalTotal - costs;
 		double actualRate = realTotal / rate;
-		cout << "Selling rate:" << rate << "\tq:" << quantity << "\ntTotal:" << theoricalTotal << "\trTotal:" << realTotal << "\tcosts:" << costs << "\taRate:" << actualRate << endl;
+		cout << "optMarket:: selling rate:" << rate << "\tq:" << quantity << "\ntTotal:" << theoricalTotal << "\trTotal:" << realTotal << "\tcosts:" << costs << "\taRate:" << actualRate << endl;
 
 		string baseCurrency = market.substr(0, market.find("-"));
 		string tradedCurrency = market.substr(market.find("-") + 1);
@@ -409,8 +464,8 @@ public:
 
 		bittrex.setGetBalance(tradedCurrency);
 		string buffer = bittrex.callCurlPlataform(InstuctionOptions(false, true, false));
-		currencyBalance cBT = getMarketBalanceFromAPI(buffer, tradedCurrency);
-		currencyBalance cBB = getMarketBalanceFromAPI(buffer, baseCurrency);
+		currencyBalance cBT = filterBittrexBalanceForSpecificMarket(buffer, tradedCurrency);
+		currencyBalance cBB = filterBittrexBalanceForSpecificMarket(buffer, baseCurrency);
 
 		bittrex.setSellLimit(market, quantity, rate);
 		buffer = bittrex.callCurlPlataform(InstuctionOptions(true, true, false));
@@ -420,10 +475,10 @@ public:
 
 		bittrex.setGetBalance(tradedCurrency);
 		buffer = bittrex.callCurlPlataform(InstuctionOptions(false, true, false));
-		currencyBalance cBTNew = getMarketBalanceFromAPI(buffer, tradedCurrency);
-		currencyBalance cBBNew = getMarketBalanceFromAPI(buffer, baseCurrency);
+		currencyBalance cBTNew = filterBittrexBalanceForSpecificMarket(buffer, tradedCurrency);
+		currencyBalance cBBNew = filterBittrexBalanceForSpecificMarket(buffer, baseCurrency);
 
-		cout << "Traded(Old,New):(" << cBT.balance << "," << cBTNew.balance << ")" << endl;
+		cout << "optMarket::traded(Old,New):(" << cBT.balance << "," << cBTNew.balance << ")" << endl;
 		cout << "Base(Old,New):(" << cBB.balance << "," << cBBNew.balance << ")" << endl;
 		cout << "Sold value of traded is: " << cBTNew.balance - cBT.balance << endl;
 		cout << "Amount of coins bought for the base currency is: " << cBBNew.balance - cBB.balance << endl;
@@ -431,100 +486,51 @@ public:
 
 	}
 
-	vector<ordersMetrics> returnOrdersBookAverageValues(const vector<vector<double> > orderBookVectors, const double percentage, const int nOrders = -1)
-	{
-		vector<KahanAccumulation> vSum(4);
-		int nBuying = orderBookVectors[BOOK_BUY_ORDERS_Q].size();
-		int nSelling = orderBookVectors[BOOK_SELL_ORDERS_Q].size();
-
-		int nBuyOrdersToAvg = nOrders, nSellOrdersToAvg = nOrders;
-		if (nOrders == -1)
-		{
-			nBuyOrdersToAvg = nBuying * percentage;
-			nSellOrdersToAvg = nBuying * percentage;
-		}
-
-		KahanAccumulation init =
-		{ 0 };
-		vSum[BOOK_BUY_ORDERS_Q] = accumulate(orderBookVectors[BOOK_BUY_ORDERS_Q].begin(), orderBookVectors[BOOK_BUY_ORDERS_Q].begin() + nBuyOrdersToAvg, init, KahanSum);
-		vSum[BOOK_BUY_ORDERS_R] = std::accumulate(orderBookVectors[BOOK_BUY_ORDERS_R].begin(), orderBookVectors[BOOK_BUY_ORDERS_R].begin() + nBuyOrdersToAvg, init, KahanSum);
-		vSum[BOOK_SELL_ORDERS_Q] = accumulate(orderBookVectors[BOOK_SELL_ORDERS_Q].begin(), orderBookVectors[BOOK_SELL_ORDERS_Q].begin() + nSellOrdersToAvg, init, KahanSum);
-		vSum[BOOK_SELL_ORDERS_R] = accumulate(orderBookVectors[BOOK_SELL_ORDERS_R].begin(), orderBookVectors[BOOK_SELL_ORDERS_R].begin() + nSellOrdersToAvg, init, KahanSum);
-
-		vector<ordersMetrics> vMetrics(4);
-
-		vMetrics[BOOK_BUY_ORDERS_Q].avg = vSum[BOOK_BUY_ORDERS_Q].sum / nBuyOrdersToAvg;
-		vMetrics[BOOK_BUY_ORDERS_R].avg = vSum[BOOK_BUY_ORDERS_R].sum / nBuyOrdersToAvg;
-		vMetrics[BOOK_SELL_ORDERS_Q].avg = vSum[BOOK_SELL_ORDERS_Q].sum / nSellOrdersToAvg;
-		vMetrics[BOOK_SELL_ORDERS_R].avg = vSum[BOOK_SELL_ORDERS_R].sum / nSellOrdersToAvg;
-
-		for (int i = 0; i < (int) vMetrics.size(); i++)
-		{
-			vMetrics[i].stdev = 0.0;
-			double m = vMetrics[i].avg;
-
-			for_each(orderBookVectors[i].begin(), orderBookVectors[i].begin() + nBuyOrdersToAvg, [&](const double d)
-			{
-				vMetrics[i].stdev += (d - m) * (d - m);
-			});
-
-			vMetrics[i].stdev = sqrt(vMetrics[i].stdev / (orderBookVectors[i].size() - 1));
-		}
-
-		return vMetrics;
-	}
-
-	vector<ordersMetrics> callBookOfOffers_UpdateVectors_ReturnMetrics(BittrexAPI& bittrex, const string market, const int depth)
+	vector<vector<double> > callBookOfOffers_UpdateVectors(BittrexAPI& bittrex, const string market, const int depth)
 	{
 		bittrex.setGetOrdersBook(market, depth);
 
-		bool print = false;
-		bool sign = false;
-		bool exportReply = false;
+		bool print, sign, exportReply;
 
-		InstuctionOptions instOpt(print, sign, exportReply);
+		InstuctionOptions instOpt(print = false, sign = false, exportReply = false);
 		//Executing instruction
 		string buffer = bittrex.callCurlPlataform(instOpt);
 
 		//Example for putting all orders into vectors, quantities and rates
-		vector<vector<double> > orderBookVectors = transformBookToVectors(buffer);
-
-		double percentage = 0.25;
-		int nOrders = 10;
-
-		return returnOrdersBookAverageValues(orderBookVectors, percentage, nOrders);
-//		cout << "average values are:\t";
-//		for (int i = 0; i < (int) vMetrics.size(); i++)
-//			cout << vMetrics[i].avg << "/" << vMetrics[i].stdev << "\t";
-//		cout << endl;
+		return transformBookToVectors(buffer);
 	}
 
 	void callBookOffers_ToTimeSeries_PlusAutomaticActions(BittrexAPI& bittrex, const string market, const int depth)
 	{
-		int secondsPerUpdate = -5; // no sleep if lower than 0
+		int secondsPerUpdate = -5; // if lower than 0, no sleep
 
+		//frequencies and maxSamples determines the TS that will be kept
 		vector<int> frequencies =
 		{ 1, 5, 10, 60 };
 		vector<int> maxSamples =
 		{ 3600 * 3, 500, 360 * 3, 36 * 3 };
+
+		//Class with all Time Series from the Order Book
 		OrderBookTimeSeries oBTS(frequencies, maxSamples);
 
-		Timer tTotal;
-		for (int i = 0; i < 10000; i++)
+		Timer tTotal; //Timer used for updating time series
+		int nMaxOfIterations = 10000;
+		for (int i = 0; i < nMaxOfIterations; i++)
 		{
 			Timer tnow;
-			vector<ordersMetrics> vMetrics = callBookOfOffers_UpdateVectors_ReturnMetrics(bittrex, market, depth);
+			vector<vector<double> > vBookOfOrders = callBookOfOffers_UpdateVectors(bittrex, market, depth);
 
-			cout << "AVG/SD (bQ,bR,sQ,sR):\t";
-			for (int i = 0; i < (int) vMetrics.size(); i++)
-				cout << vMetrics[i].avg << "/" << vMetrics[i].stdev << "\t";
+			vector<ordersBookBasicInfo> vAvgStd = oBTS.calculate_AVG_STD(vBookOfOrders);
+
+			cout << "optMarket::AVG/SD (bQ,bR,sQ,sR):\t";
+			for (int i = 0; i < (int) vAvgStd.size(); i++)
+				cout << vAvgStd[i].avg << "/" << vAvgStd[i].stdev << "\t";
 			cout << endl;
 
-			oBTS.updateTS(vMetrics, round(tTotal.now()));
-
+			oBTS.updateTSBasicInfo(vAvgStd, round(tTotal.now()));
 			oBTS.callMetrics();
 
-			cout << "spent time was " << tnow.now() << endl;
+			cout << "optMarket::Spent time:" << tnow.now() << endl;
 			for (int ts = 0; ts < oBTS.getNTS(); ts++)
 				cout << oBTS.getTSIterSize(ts) << "\t";
 			cout << endl;

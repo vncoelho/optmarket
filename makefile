@@ -6,9 +6,9 @@ LDFLAGS = -lcpprest -lssl -lcrypto -lboost_system -lboost_thread-mt -lboost_chro
 #-ljsoncpp 
 #-Wall 
 test:
+	g++ -Ofast -std=c++11 main.cpp -ljsoncpp -lpthread -ldl -lcurl -lcrypto -o app_OptMarket
 	#g++ $(GCC_FLAGS) $(RESTSDK_FGLAS) ./main.cpp -o ./testAquiVamos
 	#g++  -std=c++11 main.cpp -o my_file -lcpprest -lssl -lcrypto -lboost_system
-	g++ -std=c++11 main.cpp -ljsoncpp -lpthread -ldl -lcurl -lcrypto -o my_file 
 	#g++ main.cpp -ljsoncpp -lcurl -ljsonrpccpp-common -ljsonrpccpp-client -o sampleclient
 
 
