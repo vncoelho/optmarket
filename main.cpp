@@ -11,19 +11,23 @@ string API_PUBLIC_KEY, API_PRIVATE_KEY;
 
 void readKeys(string& apikey, string& apisecret)
 {
-	//TODO
-	//[17:15, 3/7/2017] Igor Machado: Mais simples, no terminal:  $ export CHAVE="1234"
-	//[17:16, 3/7/2017] Igor Machado: No código: char* val=getenv("CHAVE") ;
+	apikey = getenv("PUB_KEY");
+	apisecret = getenv("PRIVATE_KEY");
 
-	string str;
-	ifstream t("keys.input");
-	getline(t, str);
-	getline(t, apikey);
-	getline(t, str);
-	getline(t, apisecret);
+	//==================================================
+	//Deprecated strategy for getting keys from a local file
+	//	string str;
+	//	ifstream t("keys.input");
+	//	getline(t, str);
+	//	getline(t, apikey);
+	//	getline(t, str);
+	//	getline(t, apisecret);
+	//==================================================
 
 //	cout << apikey << endl;
 //	cout << apisecret << endl;
+//	cout << getenv("PUB_KEY") << endl;
+//	cout << getenv("PRIVATE_KEY") << endl;
 //	getchar();
 }
 
@@ -55,7 +59,7 @@ int main(void)
 //	getchar();
 
 	instOpt = InstuctionOptions(print = false, sign = true, exportReply = false);
-	output_buffer = bittrex.callCurlPlataform(instOpt);
+//	output_buffer = bittrex.callCurlPlataform(instOpt);
 
 //	optMarket.optSellCalculatingProfit(bittrex,quantity,rate,"BTC-NEO");
 	optMarket.callBookOffers_ToTimeSeries_PlusAutomaticActions(bittrex, "USDT-BTC", 50);
