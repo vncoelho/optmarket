@@ -68,7 +68,7 @@ Donate
 
 [17GrXw3qdz1G6DRxvtmhnhLzFXjRK5z6NY](http://i.imgur.com/xC5SnSL.png)
 
-## ANS
+## NEO
 AZZZsZJVqZwfHUx55p6UdY1Vx7qCjhnjMy
 
 ## ETH
