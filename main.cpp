@@ -54,7 +54,14 @@ int main(void)
 //	bittrex.setCancelOrder("aa408c07-3d7f-4696-8102-f8fb9b5ed2be");
 	bool print, sign, exportReply;
 
+	optMarket.optGetLastTradeBittrex(bittrex, "BTC-NEO");
+	optMarket.optGetMarketHistoryBittrex(bittrex, "BTC-NEO");
+	getchar();
 	optMarket.optGetBalanceBittrex(bittrex, "TRIG");
+
+
+
+
 
 //	getchar();
 
@@ -89,7 +96,7 @@ int main(void)
 
 	instOpt = InstuctionOptions(print = true, sign = true, exportReply = false);
 	//Executing instruction
-	output_buffer = bittrex.callCurlPlataform(instOpt);
+	output_buffer = optMarket.callCurlPlataform(instOpt, bittrex.getURL());
 
 //	InstuctionOptions instOpt(print, sign, exportReply);
 	//Executing instruction

@@ -9,17 +9,17 @@ For advancing into these directions, please check the [OptFrame](https://sourcef
 
 This version implement V1.1 Bittrex API and the new HMAC authentification.
 
-
 optmarket-bittrex is framework mainly designed for communicating with Bittrex API (public and private) in c++. Some templates are available for transforming the adquired data into vectors, providing an insight for the use of other efficient data types. We believe that optimization, metaheuristics and other intelligent inspired systems can be easily embedded inside it. For advancing into these directions, please check the OptFrame.
 
 
-#Dependencies
+##Dependencies
 libssl-dev
 libcurl
 libjsoncpp-dev
 
-#Execution
-export PRIVATE_KEY="1234" && export PUB_KEY="1234" && app_OptMarket
+
+##Execution
+export PRIVATE_KEY="#YOUR_API_PRIVATE_KEY" && export PUB_KEY="#YOUR_API_PUBLIC_KEY" && app_OptMarket
 
 ## Import
 git clone "github.com/vncoelho/optmarket-bittrex.git"
@@ -76,6 +76,6 @@ AZZZsZJVqZwfHUx55p6UdY1Vx7qCjhnjMy
 ~~~
 
 ## Main contributors
-v1.2
+v2.0
 Vitor Nazário Coelho
 Igor Machado Coelho

@@ -32,6 +32,26 @@ struct currencyBalance
 	}
 };
 
+struct marketOperation
+{
+	int id, type;
+	double q, p, t; //quantity, price and total
+	struct tm tm;
+
+	//string tradeTimestamp;
+
+	marketOperation()
+	{
+
+	}
+
+	marketOperation(int _id, int _type, struct tm _tm, double _q, double _p, double _t) :
+			id(_id), type(_type), tm(_tm), q(_q), p(_p), t(_t)
+	{
+
+	}
+};
+
 ostream& operator<<(ostream &os, const currencyBalance& obj)
 {
 	os << "balance=" << obj.balance << "\tavailable=" << obj.available << "\tpending=" << obj.pending << endl;
@@ -394,7 +414,201 @@ public:
 	{
 	}
 
-	bool checkFail(string buffer)
+	string getHMAC2(string keyParam, string message)
+	{
+		//	    char data[] = "Hi! Donate us some coins";
+		//		char key[] = "BTC:17GrXw3qdz1G6DRxvtmhnhLzFXjRK5z6NY";
+		//		char key[] = "ETH:0xd35fb76723636e11Fa580665A54E19F781C6Cd8a";
+		//		char key[] = "ANS:AZZZsZJVqZwfHUx55p6UdY1Vx7qCjhnjMy";
+
+		char key[10000]; //todo huge size for avoiding smashing -- not efficient but works
+		char data[10000];
+		strcpy(key, keyParam.c_str());
+		strncpy(data, message.c_str(), sizeof(data));
+
+		unsigned char* digest;
+
+		//============================================
+		//Example extracted from http://www.askyb.com/cpp/openssl-hmac-hasing-example-in-cpp/
+		//accessed on February, 26th 2013 in C++ OpenSSL
+		//=============================================
+		// Using sha1 hash engine here.
+		// You may use other hash engines. e.g EVP_md5(), EVP_sha224, EVP_sha512, etc
+		digest = HMAC(EVP_sha512(), key, strlen(key), (unsigned char*) data, strlen(data), NULL, NULL);
+
+		// Be careful of the length of string with the chosen hash engine.
+		//SHA1 produces a 20-byte hash value which rendered as 40 characters.
+		// Change the length accordingly with your chosen hash engine
+		char mdString[SHA512_DIGEST_LENGTH];
+		for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
+			sprintf(&mdString[i * 2], "%02x", (unsigned int) digest[i]);
+
+		//printf("HMAC digest: %s\n", mdString);
+		//=============================================
+
+		string output = mdString;
+		return output;
+	}
+
+	static size_t writerToString(void *contents, size_t size, size_t nmemb, void *userp)
+	{
+		((string*) userp)->append((char*) contents, size * nmemb);
+		size_t realsize = size * nmemb;
+		return realsize;
+	}
+
+	string callCurlPlataform(const InstuctionOptions& instOpt, const stringstream& ssURL)
+	{
+		//For more information: check: https://curl.haxx.se/libcurl/c/getinmemory.html
+		if (ssURL.str() == "")
+		{
+			cout << "empty instruction." << endl;
+			getchar();
+			return "";
+		}
+		else
+		{
+			cout << "\n=============================================" << endl;
+			cout << "Executing instruction\t Signed:" << instOpt.signMessage << "\n" << ssURL.str() << endl;
+			//			cout << "press any key to continue..." << endl;
+			cout << "=============================================" << endl;
+			//			getchar();
+		}
+
+		CURL *curl_handle;
+
+		string readBuffer;
+
+		curl_global_init(CURL_GLOBAL_ALL);
+
+		// curl session begins
+		curl_handle = curl_easy_init();
+
+		// set destination URL
+		curl_easy_setopt(curl_handle, CURLOPT_URL, (const char* ) ssURL.str().c_str());
+
+		/* signing instruction */
+		if (instOpt.signMessage == true)
+		{
+			string signature = getHMAC2(API_PRIVATE_KEY, ssURL.str());
+			cout << "\n----------------------------------------------" << endl;
+			cout << "HMAC signature (header purpose): \n" << signature << endl;
+			cout << "----------------------------------------------" << endl;
+			stringstream ssSignature;
+			ssSignature << "apisign:" << signature;
+
+			struct curl_slist *headerlist = NULL;
+			headerlist = curl_slist_append(headerlist, (const char*) ssSignature.str().c_str());
+
+			//setting header with signature
+			curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headerlist);
+		}
+
+		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
+
+		// send all data to this function
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, writerToString);
+		// and filling a string buffer
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &readBuffer);
+
+		//let's get it
+		CURLcode ans = curl_easy_perform(curl_handle);
+
+		/* check for errors */
+		if (ans != CURLE_OK)
+		{
+			fprintf(stderr, "curl_easy_perform() found problems (failed): %s\n", curl_easy_strerror(ans));
+			return "curl_easy_perform Failed Error";
+			//exit(1);
+		}
+		else
+		{
+			cout << "\n=============================================" << endl;
+			cout << "=============================================" << endl;
+			cout << "Server answer:" << endl;
+			if (instOpt.printAnswer)
+				cout << readBuffer << endl;
+			else
+				cout << "message optionally omitted" << endl;
+
+			cout << "=============================================\n" << endl;
+			//		getchar();
+		}
+
+		if (instOpt.exportBuffer)
+		{
+			cout << "=============================================" << endl;
+			cout << "Exporting header and body messages..." << endl;
+			exportReply(curl_handle);
+			cout << "=============================================" << endl;
+		}
+
+		/* cleanup curl stuff */
+		curl_easy_cleanup(curl_handle);
+
+		return readBuffer;
+	}
+
+	// ===========================================================
+	// ===========================================================
+	//	Other useful functions
+	// ===========================================================
+	static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
+	{
+		size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
+		return written;
+	}
+
+	void exportReply(CURL* curl_handle)
+	{
+		static const char *headerfilename = "headAnswer.out";
+		FILE *headerfile;
+		static const char *bodyfilename = "bodyAnswer.out";
+		FILE *bodyfile;
+
+		CURLcode res = curl_easy_perform(curl_handle);
+
+		/* open the header file */
+		headerfile = fopen(headerfilename, "wb");
+		if (!headerfile)
+		{
+			curl_easy_cleanup(curl_handle);
+			cout << "error on exporting header file!" << endl;
+			exit(-1);
+		}
+
+		/* open the body file */
+		bodyfile = fopen(bodyfilename, "wb");
+		if (!bodyfile)
+		{
+			curl_easy_cleanup(curl_handle);
+			fclose(headerfile);
+			cout << "error on exporting body file!" << endl;
+			exit(-1);
+
+		}
+
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+
+		/* we want the headers be written to this file handle */
+		curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, headerfile);
+
+		/* we want the body be written to this file handle instead of stdout */
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, bodyfile);
+
+		/* get it! */
+		curl_easy_perform(curl_handle);
+
+		/* close the header file */
+		fclose(headerfile);
+
+		/* close the body file */
+		fclose(bodyfile);
+	}
+	// ===========================================================
+	// ===========================================================
+
+	bool checkFail(const string buffer)
 	{
 		cout << buffer << endl;
 		size_t posFalse = buffer.find("false");
@@ -404,6 +618,13 @@ public:
 			return false;
 
 		return true;
+	}
+
+	void printFail(bool check)
+	{
+		if (!check)
+			cerr << "Error" << endl;
+
 	}
 
 	currencyBalance filterBittrexBalanceForSpecificMarket(string buffer, string market)
@@ -428,11 +649,95 @@ public:
 		bool print, sign, exportReply;
 
 		bittrex.setGetBalance(market);
-		string buffer = bittrex.callCurlPlataform(InstuctionOptions(print = false, sign = true, exportReply = false));
+		string buffer = callCurlPlataform(InstuctionOptions(print = false, sign = true, exportReply = false), bittrex.getURL());
 		currencyBalance cBT = filterBittrexBalanceForSpecificMarket(buffer, market);
 
 		cout << "optMarket::" << cBT << endl;
 		getchar();
+	}
+
+	double optGetLastTradeBittrex(BittrexAPI& bittrex, const string market)
+	{
+		bool print, sign, exportReply;
+		double lastTrade = -1;
+
+		bittrex.setGetTicker(market);
+		string buffer = callCurlPlataform(InstuctionOptions(print = false, sign = false, exportReply = false), bittrex.getURL());
+		//assert(checkFail(buffer));
+		bool check = checkFail(buffer);
+		if (!check)
+			printFail(check);
+		else
+		{
+			size_t pos = buffer.find("Last");
+
+			string last = buffer.substr(pos + 6, buffer.size() - 2 - pos - 6);
+			lastTrade = stod(last);
+
+			cout << "optMarket::LastTradeWas:" << lastTrade << endl;
+		}
+		return lastTrade;
+	}
+
+	string cutJSONObjVar(string& stringJsonToCut)
+	{
+		size_t posB = stringJsonToCut.find(":");
+		size_t posE1 = stringJsonToCut.find(",");
+		size_t posE2 = stringJsonToCut.find("}");
+		size_t posE = min(posE1, posE2);
+		string var = stringJsonToCut.substr(posB + 1, posE - posB - 1);
+		stringJsonToCut = stringJsonToCut.substr(posE + 2);
+//		cout << var << endl;
+//		cout<<stringJsonToCut<<endl;
+//		getchar();
+		return var;
+	}
+
+	vector<marketOperation> optGetMarketHistoryBittrex(BittrexAPI& bittrex, const string market)
+	{
+		bool print, sign, exportReply;
+
+		bittrex.setGetMarketHistory(market);
+		string buffer = callCurlPlataform(InstuctionOptions(print = false, sign = false, exportReply = false), bittrex.getURL());
+		//assert(checkFail(buffer));
+		bool check = checkFail(buffer);
+		if (!check)
+			printFail(check);
+		else
+		{
+
+			buffer = buffer.substr(buffer.find("[{"));
+			cout << buffer << endl;
+
+			bool finish = false;
+			while (!finish)
+			{
+				marketOperation mOP;
+				mOP.id = stoi(cutJSONObjVar(buffer));
+				string timestamp = cutJSONObjVar(buffer);
+				mOP.q = stod(cutJSONObjVar(buffer));
+				mOP.p = stod(cutJSONObjVar(buffer));
+				mOP.t = stod(cutJSONObjVar(buffer));
+				cutJSONObjVar(buffer); //skip fillType
+				string orderType = cutJSONObjVar(buffer);
+				cout << mOP.id << endl;
+				cout << timestamp << endl;
+				cout << mOP.p << endl;
+				cout << mOP.q << endl;
+				cout << mOP.t << endl;
+				cout << orderType << endl;
+				getchar();
+			}
+			getchar();
+			size_t pos = buffer.find("Last");
+
+			string last = buffer.substr(pos + 6, buffer.size() - 2 - pos - 6);
+			double lastTrade = stod(last);
+
+			cout << "optMarket::LastTradeWas:" << lastTrade << endl;
+			//return lastTrade;
+		}
+
 	}
 
 	void optSellCalculatingProfit(BittrexAPI& bittrex, double quantity, double rate, string market)
@@ -453,18 +758,18 @@ public:
 		InstuctionOptions instOpt(print, sign, exportReply);
 
 		bittrex.setGetBalance(tradedCurrency);
-		string buffer = bittrex.callCurlPlataform(InstuctionOptions(false, true, false));
+		string buffer = callCurlPlataform(InstuctionOptions(false, true, false), bittrex.getURL());
 		currencyBalance cBT = filterBittrexBalanceForSpecificMarket(buffer, tradedCurrency);
 		currencyBalance cBB = filterBittrexBalanceForSpecificMarket(buffer, baseCurrency);
 
 		bittrex.setSellLimit(market, quantity, rate);
-		buffer = bittrex.callCurlPlataform(InstuctionOptions(true, true, false));
+		buffer = callCurlPlataform(InstuctionOptions(true, true, false), bittrex.getURL());
 
 		//TODO - Create a function for checking pending orders and wait
 		//Go to the multicore, multigpu and run all this in parallel
 
 		bittrex.setGetBalance(tradedCurrency);
-		buffer = bittrex.callCurlPlataform(InstuctionOptions(false, true, false));
+		buffer = callCurlPlataform(InstuctionOptions(false, true, false), bittrex.getURL());
 		currencyBalance cBTNew = filterBittrexBalanceForSpecificMarket(buffer, tradedCurrency);
 		currencyBalance cBBNew = filterBittrexBalanceForSpecificMarket(buffer, baseCurrency);
 
@@ -484,7 +789,7 @@ public:
 
 		InstuctionOptions instOpt(print = false, sign = false, exportReply = false);
 		//Executing instruction
-		string buffer = bittrex.callCurlPlataform(instOpt);
+		string buffer = callCurlPlataform(instOpt, bittrex.getURL());
 
 		//Example for putting all orders into vectors, quantities and rates
 		return transformBookToVectors(buffer);
