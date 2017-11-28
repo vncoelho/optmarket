@@ -50,7 +50,15 @@ struct marketOperation
 	{
 
 	}
+
 };
+
+ostream& operator<<(ostream &os, const marketOperation& obj)
+{
+	os << "ID:" << obj.id << "\ttype:" << obj.type << "\tq:" << obj.q << "\tp:" << obj.p << "\tt:" << obj.t;
+	os << "\ttm.year:" << obj.tm.tm_year << endl;
+	return os;
+}
 
 ostream& operator<<(ostream &os, const currencyBalance& obj)
 {
@@ -469,7 +477,7 @@ public:
 		else
 		{
 			cout << "\n=============================================" << endl;
-			cout << "Executing instruction\t Signed:" << instOpt.signMessage << "\n" << ssURL.str() << endl;
+			cout << "Executing instruction\tPRIVATE_KEY_Signing:" << instOpt.signMessage << "\n" << ssURL.str() << endl;
 			//			cout << "press any key to continue..." << endl;
 			cout << "=============================================" << endl;
 			//			getchar();
@@ -525,7 +533,7 @@ public:
 		{
 			cout << "\n=============================================" << endl;
 			cout << "=============================================" << endl;
-			cout << "Server answer:" << endl;
+			cout << "API reply:" << endl;
 			if (instOpt.printAnswer)
 				cout << readBuffer << endl;
 			else
@@ -693,8 +701,19 @@ public:
 		return var;
 	}
 
-	vector<marketOperation> optGetMarketHistoryBittrex(BittrexAPI& bittrex, const string market)
+	void convertStringBittrexToTm(const string& timestamp, struct tm &tm)
 	{
+		tm.tm_year = stoi(timestamp.substr(1, 2));
+		tm.tm_mon = stoi(timestamp.substr(6, 2));
+		tm.tm_mday = stoi(timestamp.substr(9, 2));
+		tm.tm_hour = stoi(timestamp.substr(13, 2));
+		tm.tm_min = stoi(timestamp.substr(16, 2));
+		tm.tm_sec = stoi(timestamp.substr(19, 2));
+
+	}
+	vector<marketOperation> getMarketHistoryBittrex(BittrexAPI& bittrex, const string market)
+	{
+		vector<marketOperation> vMOp;
 		bool print, sign, exportReply;
 
 		bittrex.setGetMarketHistory(market);
@@ -720,23 +739,30 @@ public:
 				mOP.t = stod(cutJSONObjVar(buffer));
 				cutJSONObjVar(buffer); //skip fillType
 				string orderType = cutJSONObjVar(buffer);
-				cout << mOP.id << endl;
-				cout << timestamp << endl;
-				cout << mOP.p << endl;
-				cout << mOP.q << endl;
-				cout << mOP.t << endl;
-				cout << orderType << endl;
-				getchar();
+				convertStringBittrexToTm(timestamp, mOP.tm);
+
+				if (orderType.find("SELL") <= 1)
+					mOP.type = 0;
+				else
+					mOP.type = 1;
+//				cout << mOP.type << endl;
+//				cout << mOP.tm.tm_year << endl;
+//				cout << mOP.tm.tm_min << endl;
+				cout << mOP << endl;
+				vMOp.push_back(mOP);
+
+				if(int(buffer.find("}]}")) > buffer.size())
+					finish=true;
 			}
-			getchar();
-			size_t pos = buffer.find("Last");
 
-			string last = buffer.substr(pos + 6, buffer.size() - 2 - pos - 6);
-			double lastTrade = stod(last);
-
-			cout << "optMarket::LastTradeWas:" << lastTrade << endl;
-			//return lastTrade;
 		}
+		cout << "\nHi" << endl;
+		getchar();
+		return vMOp;
+	}
+
+	void OptGetMarketHistoryBittrex(BittrexAPI& bittrex, const string market)
+	{
 
 	}
 

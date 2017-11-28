@@ -55,7 +55,8 @@ int main(void)
 	bool print, sign, exportReply;
 
 	optMarket.optGetLastTradeBittrex(bittrex, "BTC-NEO");
-	optMarket.optGetMarketHistoryBittrex(bittrex, "BTC-NEO");
+	getchar();
+	optMarket.getMarketHistoryBittrex(bittrex, "USDT-NEO");
 	getchar();
 	optMarket.optGetBalanceBittrex(bittrex, "TRIG");
 
