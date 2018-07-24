@@ -82,7 +82,7 @@ struct IndividuoES
 
 //CADA INDIVIDUO EH UM PAR DE SOLUCAO E UMA TUPLE COM O PARAMETROS DA ESTRATEGIA
 template<class R, class ADS = OPTFRAME_DEFAULT_ADS>
-class ES: public SingleObjSearch<R, ADS>
+class NGES: public SingleObjSearch<R, ADS>
 {
 private:
 	string path, outputFile;
@@ -133,7 +133,7 @@ public:
 		// selectionMethod == 1 selection pressure (mi+lambda)
 	}
 
-	virtual ~ES()
+	virtual ~NGES()
 	{
 	}
 
